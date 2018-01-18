@@ -88,14 +88,24 @@ describe('http-transport:', () => {
 	});
 
 	describe('addListener:', () => {
+		let transport;
+
+		beforeEach(() => {
+			transport = new HTTPTransport();
+		});
+
+		afterEach(() => {
+			if (transport && transport.listening) {
+				return transport.disconnect();
+			}
+		});
+
 		it('should return a promise that resolves', () => {
-			const transport = new HTTPTransport();
 			return transport.addListener('bob', (msg, correlationId, initiator) => {
 				return Promise.resolve({ result: `Received ${JSON.stringify(msg)}, ${correlationId}, ${initiator}` });
 			});
 		});
 		it('should catch invalid routingKey params', () => {
-			const transport = new HTTPTransport();
 			return transport.addListener(44444, (msg, correlationId, initiator) => {
 				return Promise.resolve({ result: `Received ${JSON.stringify(msg)}, ${correlationId}, ${initiator}` });
 			})
@@ -109,7 +119,6 @@ describe('http-transport:', () => {
 				});
 		});
 		it('should catch invalid callback params', () => {
-			const transport = new HTTPTransport();
 			return transport.addListener('bob')
 				.then(() => {
 					throw new Error('Failed to catch invalid input.');
@@ -120,8 +129,7 @@ describe('http-transport:', () => {
 					}
 				});
 		});
-		it('should register a working callback', () => {
-			const transport = new HTTPTransport();
+		it('should register a working get callback', () => {
 			return transport.addListener('bob', (msg, correlationId, initiator) => {
 				return Promise.resolve({ result: `Received ${JSON.stringify(msg)}, ${correlationId}, ${initiator}` });
 			})
@@ -130,63 +138,130 @@ describe('http-transport:', () => {
 				})
 				.then(() => transport.listen())
 				.then(() => supertest(transport.app)
-					.get('/bob')
+					.get('/bob?testParam=5')
 					.set('X-PMG-CorrelationId', 'testCorrelationId')
 					.set('X-PMG-Initiator', 'testInitiator')
 					.expect('Content-Type', /json/)
 					.expect(200)
 					.then((response) => {
-						response.body.result.should.equal('Received {}, testCorrelationId, testInitiator');
+						response.body.result.should.equal('Received {"testParam":"5"}, testCorrelationId, testInitiator');
+					}));
+		});
+		it('should register a working post callback', () => {
+			return transport.addListener('bob', (msg, correlationId, initiator) => {
+				return Promise.resolve({ result: `Received ${JSON.stringify(msg)}, ${correlationId}, ${initiator}` });
+			}, { httpMethod: 'POST' })
+				.then((handler) => {
+					expect(handler).to.exist();
+				})
+				.then(() => transport.listen())
+				.then(() => supertest(transport.app)
+					.post('/bob')
+					.set('X-PMG-CorrelationId', 'testCorrelationId')
+					.set('X-PMG-Initiator', 'testInitiator')
+					.send({ postParam1: 'test value' })
+					.expect('Content-Type', /json/)
+					.expect(200)
+					.then((response) => {
+						response.body.result.should.equal('Received {"postParam1":"test value"}, testCorrelationId, testInitiator');
+					}));
+		});
+		it('should handle unregistered routes appropriately', () => {
+			return transport.listen()
+				.then(() => supertest(transport.app)
+					.post('/bob')
+					.expect('Content-Type', /json/)
+					.expect(404)
+					.then((response) => {
+						expect(response.body).to.exist();
+						response.body.message.should.equal('Not Found');
 					}));
 		});
 	});
 
-	// describe('removeListener:', () => {
-	// 	it('should return a promise that resolves', () => {
-	// 		const transport = new HTTPTransport();
-	// 		return transport.removeListener('bob');
-	// 	});
-	// 	it('should catch invalid routingKey params', () => {
-	// 		const transport = new HTTPTransport();
-	// 		return transport.publish(35353535)
-	// 			.then(() => {
-	// 				throw new Error('Failed to catch invalid input.');
-	// 			})
-	// 			.catch((err) => {
-	// 				if (!(err instanceof TypeError)) {
-	// 					throw err;
-	// 				}
-	// 			});
-	// 	});
-	// 	it('should remove timing data for the listener', () => {
-	// 		const transport = new HTTPTransport();
-	// 		return transport.addListener('bob', () => {
-	// 			return Promise.resolve();
-	// 		})
-	// 			.then(() => transport.recordTiming('bob', new Date().getTime()))
-	// 			.then(() => {
-	// 				expect(transport.timings.bob).to.exist();
-	// 			})
-	// 			.then(() => transport.removeListener('bob'))
-	// 			.then(() => {
-	// 				expect(transport.timings.bob).to.not.exist();
-	// 			});
-	// 	});
-	// });
+	describe('removeListener:', () => {
+		let transport;
 
-	// describe('listen:', () => {
-	// 	it('should return a promise that resolves', () => {
-	// 		const transport = new HTTPTransport();
-	// 		return transport.listen();
-	// 	});
-	// 	it('should start listening', () => {
-	// 		const transport = new HTTPTransport();
-	// 		return transport.listen()
-	// 			.then(() => {
-	// 				transport.listening.should.be.true();
-	// 			});
-	// 	});
-	// });
+		beforeEach(() => {
+			transport = new HTTPTransport();
+		});
+
+		afterEach(() => {
+			if (transport && transport.listening) {
+				return transport.disconnect();
+			}
+		});
+
+		it('should return a promise that resolves', () => {
+			return transport.removeListener('bob');
+		});
+		it('should catch invalid routingKey params', () => {
+			return transport.removeListener(35353535)
+				.then(() => {
+					throw new Error('Failed to catch invalid input.');
+				})
+				.catch((err) => {
+					if (!(err instanceof TypeError)) {
+						throw err;
+					}
+				});
+		});
+		it('should remove the listener', () => {
+			return transport.addListener('bob', (msg, correlationId, initiator) => {
+				return Promise.resolve();
+			})
+				.then((handler) => {
+					expect(handler).to.exist();
+				})
+				.then(() => transport.listen())
+				.then(() => supertest(transport.app)
+					.get('/bob?testParam=5')
+					.set('X-PMG-CorrelationId', 'testCorrelationId')
+					.set('X-PMG-Initiator', 'testInitiator')
+					.expect('Content-Type', /json/)
+					.expect(200)
+					.then((response) => {
+						expect(response.body).to.exist();
+					}))
+				.then(() => transport.removeListener('bob'))
+				.then(() => supertest(transport.app)
+					.get('/bob?testParam=5')
+					.set('X-PMG-CorrelationId', 'testCorrelationId')
+					.set('X-PMG-Initiator', 'testInitiator')
+					.expect('Content-Type', /json/)
+					.expect(404));
+		});
+	});
+
+	describe('listen:', () => {
+		let transport;
+
+		beforeEach(() => {
+			transport = new HTTPTransport();
+		});
+
+		afterEach(() => {
+			if (transport && transport.listening) {
+				return transport.disconnect();
+			}
+		});
+
+		it('should return a promise that resolves', () => {
+			return transport.listen();
+		});
+		it('should start listening', () => {
+			return transport.listen()
+				.then(() => {
+					transport.listening.should.be.true();
+				})
+				.then(() => supertest(transport.app)
+					.get('/bob?testParam=5')
+					.set('X-PMG-CorrelationId', 'testCorrelationId')
+					.set('X-PMG-Initiator', 'testInitiator')
+					.expect('Content-Type', /json/)
+					.expect(404));
+		});
+	});
 
 	// describe('publish:', () => {
 	// 	it('should return a promise that resolves', () => {

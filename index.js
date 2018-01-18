@@ -41,30 +41,37 @@ class HTTPTransport extends Transport {
 
 		this.app = express();
 		this.server = null;
-		this.router = express.Router(); // eslint-disable-line new-cap
 
+		// Make sure request bodies are automatically parsed into JSON.
 		this.app.use(bodyParser.json());
 		this.app.use(bodyParser.urlencoded({ extended: false }));
 
+		// Register the router. We'll use this to swap out listeners on the fly.
+		this.router = express.Router(); // eslint-disable-line new-cap
 		this.app.use((req, res, next) => {
 			this.router(req, res, next);
 		});
 
 		// Catch 404s and forward to error handler.
 		this.app.use((req, res, next) => {
-			const err = new Error('Not Found');
-			err.status = 404;
-			next(err);
+			next(new errors.NotFoundError('Not Found'));
 		});
 
-		// Prod error handler, no stacktraces leaked to user.
+		// Top-level error handler
 		this.app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
-			if (err.status === 404) {
-				err.message = 'Not Found';
+			err.response = err.response || { message: err.message };
+
+			if (err instanceof errors.InvalidMessageError) {
+				res.status(400).json(err.response);
+			} else if (err instanceof errors.UnauthorizedError) {
+				res.status(401).json(err.response);
+			} else if (err instanceof errors.ForbiddenError) {
+				res.status(403).json(err.response);
+			} else if (err instanceof errors.NotFoundError) {
+				res.status(404).json(err.response);
+			} else {
+				res.status(500).json(err.response);
 			}
-			res.status(err.status || 500).json({
-				message: err.message
-			});
 		});
 	}
 
@@ -109,27 +116,14 @@ class HTTPTransport extends Transport {
 
 				const topic = this.resolveTopic(routingKey);
 
-				const handler = (req, res) => {
+				const handler = (req, res, next) => {
 					const msg = options.httpMethod === 'get' || options.httpMethod === 'delete' ? req.query : req.body;
 					callbackWrapper(msg, req.headers['x-pmg-correlationid'], req.headers['x-pmg-initiator'])
 						.then((response) => {
-							res.status(200).json(response);
+							res.status(200).json(response || {});
 						})
 						.catch((err) => {
-							err.response = err.response || {};
-							err.response.message = err.message;
-
-							if (err instanceof errors.InvalidMessageError) {
-								res.status(400).json(err.response);
-							} else if (err instanceof errors.UnauthorizedError) {
-								res.status(401).json(err.response);
-							} else if (err instanceof errors.ForbiddenError) {
-								res.status(403).json(err.response);
-							} else if (err instanceof errors.NotFoundError) {
-								res.status(404).json(err.response);
-							} else {
-								res.status(500).json(err.response);
-							}
+							next(err);
 						});
 				};
 
@@ -167,28 +161,30 @@ class HTTPTransport extends Transport {
 		return super.removeListener(routingKey)
 			.then(() => {
 				const topic = this.resolveTopic(routingKey);
-				const newRouter = express.router();
+				const newRouter = express.Router(); // eslint-disable-line new-cap
 
 				for (const handler of this.router.stack) {
-					const method = handler.route.method.toLowerCase();
-					for (const layer of handler.route.stack) {
-						if (layer.path !== topic) {
-							switch (method) {
-								case 'get':
-									newRouter.get(layer.path, layer.handle);
-									break;
-								case 'post':
-									this.router.post(layer.path, layer.handle);
-									break;
-								case 'put':
-									this.router.put(layer.path, layer.handle);
-									break;
-								case 'delete':
-									this.router.delete(layer.path, layer.handle);
-									break;
-								default:
-									newRouter.all(layer.path, layer.handle);
-									break;
+					if (handler.route.method) {
+						const method = handler.route.method.toLowerCase();
+						for (const layer of handler.route.stack) {
+							if (layer.path !== topic) {
+								switch (method) {
+									case 'get':
+										newRouter.get(layer.path, layer.handle);
+										break;
+									case 'post':
+										this.router.post(layer.path, layer.handle);
+										break;
+									case 'put':
+										this.router.put(layer.path, layer.handle);
+										break;
+									case 'delete':
+										this.router.delete(layer.path, layer.handle);
+										break;
+									default:
+										newRouter.all(layer.path, layer.handle);
+										break;
+								}
 							}
 						}
 					}
