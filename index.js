@@ -7,6 +7,7 @@
 
 const querystring = require('querystring');
 const bodyParser = require('body-parser');
+const compression = require('compression');
 const express = require('express');
 const _ = require('lodash');
 const rp = require('request-promise');
@@ -24,6 +25,8 @@ class HTTPTransport extends Transport {
 	 * Constructor for the HTTPTransport object.
 	 * @param {object} [options] - Optional settings.
 	 * @param {number} [options.port] - The port that Express should listen on. Defaults to 80.
+	 * @param {boolean} [options.serveGzip] - Whether or not the transport should use gzip for express.js responses.
+	 * @param {boolean} [options.sendGzip] - Whether or not to use gzip for published messages.
 	 */
 	constructor(options) {
 		super(options);
@@ -32,6 +35,12 @@ class HTTPTransport extends Transport {
 		if (!_.isUndefined(options.port) && !_.isNumber(options.port)) {
 			throw new TypeError('"options.port" should be a number.');
 		}
+		if (!_.isUndefined(options.serveGzip) && !_.isBoolean(options.serveGzip)) {
+			throw new TypeError('"options.serveGzip" should be a boolean.');
+		}
+		if (!_.isUndefined(options.sendGzip) && !_.isBoolean(options.sendGzip)) {
+			throw new TypeError('"options.sendGzip" should be a boolean.');
+		}
 
 		/**
 		 * The port that Express should listen on.
@@ -39,8 +48,25 @@ class HTTPTransport extends Transport {
 		 */
 		this.port = options.port || defaults.port;
 
+		/**
+		 * Whether or not the transport should use gzip for express.js responses.
+		 * @type {boolean}
+		 */
+		this.serveGzip = _.isUndefined(options.serveGzip) ? defaults.serveGzip : options.serveGzip;
+
+		/**
+		 * Whether or not the transport should use gzip for published requests.
+		 * @type {boolean}
+		 */
+		this.sendGzip = _.isUndefined(options.sendGzip) ? defaults.sendGzip : options.sendGzip;
+
 		this.app = express();
 		this.server = null;
+
+		// Turn on compression, if applicable.
+		if (this.serveGzip) {
+			this.app.use(compression());
+		}
 
 		// Make sure request bodies are automatically parsed into JSON.
 		this.app.use(bodyParser.json());
@@ -241,7 +267,8 @@ class HTTPTransport extends Transport {
 					uri: `${options.httpProtocol || 'http'}://${topic}${options.port ? ':' + options.port : ''}`,
 					method: options.httpMethod || 'GET',
 					headers: options.headers,
-					json: typeof options.json === 'undefined' ? true : options.json
+					json: typeof options.json === 'undefined' ? true : options.json,
+					gzip: this.sendGzip
 				};
 
 				if (reqSettings.httpMethod === 'GET') {

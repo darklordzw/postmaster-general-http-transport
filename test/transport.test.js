@@ -1,5 +1,4 @@
 ﻿/* eslint import/no-unassigned-import: 'off' */
-/* eslint no-unused-vars: 'off' */
 'use strict';
 
 const chai = require('chai');
@@ -263,48 +262,56 @@ describe('http-transport:', () => {
 		});
 	});
 
-	// describe('publish:', () => {
-	// 	it('should return a promise that resolves', () => {
-	// 		const transport = new HTTPTransport();
-	// 		return transport.publish('bob');
-	// 	});
-	// 	it('should catch invalid routingKey params', () => {
-	// 		const transport = new HTTPTransport();
-	// 		return transport.publish(35353535)
-	// 			.then(() => {
-	// 				throw new Error('Failed to catch invalid input.');
-	// 			})
-	// 			.catch((err) => {
-	// 				if (!(err instanceof TypeError)) {
-	// 					throw err;
-	// 				}
-	// 			});
-	// 	});
-	// 	it('should catch invalid correlationId params', () => {
-	// 		const transport = new HTTPTransport();
-	// 		return transport.publish('bob', {}, { correlationId: 44444 })
-	// 			.then(() => {
-	// 				throw new Error('Failed to catch invalid input.');
-	// 			})
-	// 			.catch((err) => {
-	// 				if (!(err instanceof TypeError)) {
-	// 					throw err;
-	// 				}
-	// 			});
-	// 	});
-	// 	it('should catch invalid initiator params', () => {
-	// 		const transport = new HTTPTransport();
-	// 		return transport.publish('bob', {}, { initiator: 44444 })
-	// 			.then(() => {
-	// 				throw new Error('Failed to catch invalid input.');
-	// 			})
-	// 			.catch((err) => {
-	// 				if (!(err instanceof TypeError)) {
-	// 					throw err;
-	// 				}
-	// 			});
-	// 	});
-	// });
+	describe('publish:', () => {
+		let transport;
+
+		beforeEach(() => {
+			transport = new HTTPTransport();
+		});
+
+		afterEach(() => {
+			if (transport && transport.listening) {
+				return transport.disconnect();
+			}
+		});
+
+		it('should return a promise that resolves', () => {
+			return transport.publish('bob');
+		});
+		it('should catch invalid routingKey params', () => {
+			return transport.publish(35353535)
+				.then(() => {
+					throw new Error('Failed to catch invalid input.');
+				})
+				.catch((err) => {
+					if (!(err instanceof TypeError)) {
+						throw err;
+					}
+				});
+		});
+		it('should catch invalid correlationId params', () => {
+			return transport.publish('bob', {}, { correlationId: 44444 })
+				.then(() => {
+					throw new Error('Failed to catch invalid input.');
+				})
+				.catch((err) => {
+					if (!(err instanceof TypeError)) {
+						throw err;
+					}
+				});
+		});
+		it('should catch invalid initiator params', () => {
+			return transport.publish('bob', {}, { initiator: 44444 })
+				.then(() => {
+					throw new Error('Failed to catch invalid input.');
+				})
+				.catch((err) => {
+					if (!(err instanceof TypeError)) {
+						throw err;
+					}
+				});
+		});
+	});
 
 	// describe('request:', () => {
 	// 	it('should return a promise that resolves', () => {
