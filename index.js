@@ -152,7 +152,7 @@ class HTTPTransport extends Transport {
 							res.status(200).json(response || {});
 						})
 						.catch((err) => {
-							next(err);
+							next(err || new errors.ResponseProcessingError('Unable to process response.'));
 						});
 				};
 
@@ -184,7 +184,6 @@ class HTTPTransport extends Transport {
 	 * Deletes a message handler.
 	 * @param {string} routingKey - The routing key of the handler to remove.
 	 * @returns {Promise}
-	 * @see {https://github.com/expressjs/express/issues/2596}
 	 */
 	removeListener(routingKey) {
 		return super.removeListener(routingKey)
@@ -250,7 +249,12 @@ class HTTPTransport extends Transport {
 	 * @throws {RequestError}
 	 */
 	publish(routingKey, message, options) {
-		return this.request(routingKey, message, options);
+		return this.request(routingKey, message, options)
+			.catch((err) => {
+				if (!(err instanceof errors.ResponseError)) {
+					throw err;
+				}
+			});
 	}
 
 	/**
@@ -297,7 +301,7 @@ class HTTPTransport extends Transport {
 					gzip: this.sendGzip
 				};
 
-				if (reqSettings.httpMethod === 'GET') {
+				if (reqSettings.method === 'GET') {
 					reqSettings.qs = message;
 				} else {
 					reqSettings.body = message;
