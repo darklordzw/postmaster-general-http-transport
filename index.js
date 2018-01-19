@@ -5,7 +5,6 @@
  * @module index
  */
 
-const querystring = require('querystring');
 const bodyParser = require('body-parser');
 const compression = require('compression');
 const express = require('express');
@@ -24,7 +23,8 @@ class HTTPTransport extends Transport {
 	/**
 	 * Constructor for the HTTPTransport object.
 	 * @param {object} [options] - Optional settings.
-	 * @param {number} [options.port] - The port that Express should listen on. Defaults to 80.
+	 * @param {number} [options.timingsResetInterval] - How frequently should the transport clear its timing metrics, in milliseconds.
+	 * @param {number} [options.port] - The port that Express should listen on.
 	 * @param {boolean} [options.serveGzip] - Whether or not the transport should use gzip for express.js responses.
 	 * @param {boolean} [options.sendGzip] - Whether or not to use gzip for published messages.
 	 */
@@ -112,6 +112,7 @@ class HTTPTransport extends Transport {
 					return new Promise((resolve) => {
 						this.server.close(() => {
 							resolve();
+							this.server = null;
 						});
 					});
 				}
@@ -130,8 +131,9 @@ class HTTPTransport extends Transport {
 	/**
 	 * Adds a new message handler.
 	 * @param {string} routingKey - The routing key of the message to handle.
-	 * @param {Function} callback - The function to call when a new message is received.
+	 * @param {function} callback - The function to call when a new message is received.
 	 * @param {object} [options] - Optional params for configuring the handler.
+	 * @param {number} [options.httpMethod] - The HTTP method to listen for. Defaults to "GET".
 	 * @returns {Promise}
 	 */
 	addListener(routingKey, callback, options) {
@@ -142,6 +144,7 @@ class HTTPTransport extends Transport {
 
 				const topic = this.resolveTopic(routingKey);
 
+				// Generate the Express.js handler that wraps the callback function.
 				const handler = (req, res, next) => {
 					const msg = options.httpMethod === 'get' || options.httpMethod === 'delete' ? req.query : req.body;
 					callbackWrapper(msg, req.headers['x-pmg-correlationid'], req.headers['x-pmg-initiator'])
@@ -194,7 +197,7 @@ class HTTPTransport extends Transport {
 						const method = handler.route.method.toLowerCase();
 						for (const layer of handler.route.stack) {
 							if (layer.path !== topic) {
-								switch (method) {
+								switch (method) { // eslint-disable-line max-depth
 									case 'get':
 										newRouter.get(layer.path, layer.handle);
 										break;
@@ -240,7 +243,11 @@ class HTTPTransport extends Transport {
 	 * @param {string} routingKey - The routing key to attach to the message.
 	 * @param {object} [message] - The message data to publish.
 	 * @param {object} [options] - Optional publishing options.
+	 * @param {object} [options.correlationId] - Optional marker used for tracing requests through the system.
+	 * @param {object} [options.initiator] - Optional marker used for identifying the user who generated the initial request.
 	 * @returns {Promise}
+	 * @throws {TypeError}
+	 * @throws {RequestError}
 	 */
 	publish(routingKey, message, options) {
 		return this.request(routingKey, message, options);
@@ -251,7 +258,17 @@ class HTTPTransport extends Transport {
 	 * @param {string} routingKey - The routing key to attach to the message.
 	 * @param {object} [message] - The message data to publish.
 	 * @param {object} [options] - Optional publishing options.
+	 * @param {object} [options.correlationId] - Optional marker used for tracing requests through the system.
+	 * @param {object} [options.initiator] - Optional marker used for identifying the user who generated the initial request.
+	 * @param {object} [options.headers] - Optional http headers to send as part of the request.
+	 * @param {object} [options.host] - Optional http hostname to send to. If not specified, the routing key is assumed to include the hostname.
+	 * @param {object} [options.port] - Optional port to send. Requires the options.host parameter to be set.
+	 * @param {object} [options.httpProtocol] - Http protocol to use (HTTP/HTTPS). Defaults to HTTP.
+	 * @param {object} [options.httpMethod] - Http method to use. Defaults to GET.
 	 * @returns {Promise}
+	 * @throws {TypeError}
+	 * @throws {RequestError}
+	 * @throws {ResponseError}
 	 */
 	request(routingKey, message, options) {
 		return super.request(routingKey, message, options)
@@ -263,16 +280,25 @@ class HTTPTransport extends Transport {
 				options.headers['x-pmg-correlationid'] = correlationId;
 				options.headers['x-pmg-initiator'] = options.initiator;
 
+				// Build the uri.
+				let uri;
+				if (options.host) {
+					uri = `${options.httpProtocol || 'http'}://${options.host}${options.port ? ':' + options.port : ''}/${topic}`;
+				} else {
+					uri = `${options.httpProtocol || 'http'}://${topic}`;
+				}
+
+				// Configure the request.
 				const reqSettings = {
-					uri: `${options.httpProtocol || 'http'}://${topic}${options.port ? ':' + options.port : ''}`,
+					uri,
 					method: options.httpMethod || 'GET',
 					headers: options.headers,
-					json: typeof options.json === 'undefined' ? true : options.json,
+					json: true,
 					gzip: this.sendGzip
 				};
 
 				if (reqSettings.httpMethod === 'GET') {
-					reqSettings.qs = querystring.stringify(message);
+					reqSettings.qs = message;
 				} else {
 					reqSettings.body = message;
 				}
@@ -282,15 +308,15 @@ class HTTPTransport extends Transport {
 						if (err instanceof rpErrors.StatusCodeError) {
 							switch (err.statusCode) {
 								case 400:
-									throw new errors.InvalidMessageError(err.error.message, err.response);
+									throw new errors.InvalidMessageError(err.error.message, err.response.body);
 								case 401:
-									throw new errors.UnauthorizedError(err.error.message, err.response);
+									throw new errors.UnauthorizedError(err.error.message, err.response.body);
 								case 403:
-									throw new errors.ForbiddenError(err.error.message, err.response);
+									throw new errors.ForbiddenError(err.error.message, err.response.body);
 								case 404:
-									throw new errors.NotFoundError(err.error.message, err.response);
+									throw new errors.NotFoundError(err.error.message, err.response.body);
 								default:
-									throw new errors.ResponseProcessingError(err.error.message, err.response);
+									throw new errors.ResponseProcessingError(err.error.message, err.response.body);
 							}
 						}
 						throw new errors.RequestError(err);

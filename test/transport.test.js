@@ -32,14 +32,18 @@ describe('http-transport:', () => {
 		it('should properly initialize settings from defaults', () => {
 			const transport = new HTTPTransport();
 			transport.port.should.equal(defaults.port);
+			transport.serveGzip.should.equal(defaults.serveGzip);
+			transport.sendGzip.should.equal(defaults.sendGzip);
 		});
 		it('should properly initialize settings from input', () => {
-			const transport = new HTTPTransport({ port: 1500 });
+			const transport = new HTTPTransport({ port: 1500, sendGzip: false, serveGzip: false });
 			transport.port.should.equal(1500);
+			transport.serveGzip.should.be.false();
+			transport.sendGzip.should.be.false();
 		});
 		it('should error on invalid input', () => {
 			try {
-				const transport = new HTTPTransport({ port: 'bob' });
+				const transport = new HTTPTransport({ port: 'bob' }); // eslint-disable-line no-unused-vars
 			} catch (err) {
 				return;
 			}
@@ -65,6 +69,7 @@ describe('http-transport:', () => {
 				.then(() => transport.disconnect())
 				.then(() => {
 					transport.listening.should.be.false();
+					expect(transport.server).to.not.exist();
 				});
 		});
 	});
@@ -142,7 +147,7 @@ describe('http-transport:', () => {
 					.set('X-PMG-Initiator', 'testInitiator')
 					.expect('Content-Type', /json/)
 					.expect(200)
-					.then((response) => {
+					.then((response) => { // eslint-disable-line max-nested-callbacks
 						response.body.result.should.equal('Received {"testParam":"5"}, testCorrelationId, testInitiator');
 					}));
 		});
@@ -161,7 +166,7 @@ describe('http-transport:', () => {
 					.send({ postParam1: 'test value' })
 					.expect('Content-Type', /json/)
 					.expect(200)
-					.then((response) => {
+					.then((response) => { // eslint-disable-line max-nested-callbacks
 						response.body.result.should.equal('Received {"postParam1":"test value"}, testCorrelationId, testInitiator');
 					}));
 		});
@@ -171,7 +176,7 @@ describe('http-transport:', () => {
 					.post('/bob')
 					.expect('Content-Type', /json/)
 					.expect(404)
-					.then((response) => {
+					.then((response) => { // eslint-disable-line max-nested-callbacks
 						expect(response.body).to.exist();
 						response.body.message.should.equal('Not Found');
 					}));
@@ -206,7 +211,7 @@ describe('http-transport:', () => {
 				});
 		});
 		it('should remove the listener', () => {
-			return transport.addListener('bob', (msg, correlationId, initiator) => {
+			return transport.addListener('bob', () => {
 				return Promise.resolve();
 			})
 				.then((handler) => {
@@ -219,7 +224,7 @@ describe('http-transport:', () => {
 					.set('X-PMG-Initiator', 'testInitiator')
 					.expect('Content-Type', /json/)
 					.expect(200)
-					.then((response) => {
+					.then((response) => { // eslint-disable-line max-nested-callbacks
 						expect(response.body).to.exist();
 					}))
 				.then(() => transport.removeListener('bob'))
@@ -264,22 +269,31 @@ describe('http-transport:', () => {
 
 	describe('publish:', () => {
 		let transport;
+		let listenerTransport;
 
 		beforeEach(() => {
 			transport = new HTTPTransport();
+			listenerTransport = new HTTPTransport();
+			listenerTransport.addListener('bob', (msg) => {
+				return Promise.resolve({ message: `${msg.message}, bob!` });
+			});
+			listenerTransport.listen();
 		});
 
 		afterEach(() => {
 			if (transport && transport.listening) {
 				return transport.disconnect();
 			}
+			if (listenerTransport && listenerTransport.listening) {
+				return listenerTransport.disconnect();
+			}
 		});
 
 		it('should return a promise that resolves', () => {
-			return transport.publish('bob');
+			return transport.publish('bob', { message: 'hello' }, { host: 'localhost', port: 3000 });
 		});
 		it('should catch invalid routingKey params', () => {
-			return transport.publish(35353535)
+			return transport.publish(35353535, { message: 'hello' }, { host: 'localhost', port: 3000 })
 				.then(() => {
 					throw new Error('Failed to catch invalid input.');
 				})
@@ -290,7 +304,7 @@ describe('http-transport:', () => {
 				});
 		});
 		it('should catch invalid correlationId params', () => {
-			return transport.publish('bob', {}, { correlationId: 44444 })
+			return transport.publish('bob', {}, { correlationId: 44444, host: 'localhost', port: 3000 })
 				.then(() => {
 					throw new Error('Failed to catch invalid input.');
 				})
@@ -301,7 +315,7 @@ describe('http-transport:', () => {
 				});
 		});
 		it('should catch invalid initiator params', () => {
-			return transport.publish('bob', {}, { initiator: 44444 })
+			return transport.publish('bob', {}, { initiator: 44444, host: 'localhost', port: 3000 })
 				.then(() => {
 					throw new Error('Failed to catch invalid input.');
 				})

@@ -20,8 +20,7 @@
   "main": "index.js",
   "files": [
     "index.js",
-    "defaults.json",
-    "lib"
+    "defaults.json"
   ],
   "scripts": {
     "test": "nyc --reporter=html --reporter=text mocha --exit",
@@ -33,7 +32,7 @@
     "compression": "^1.7.1",
     "express": "^4.16.2",
     "lodash": "^4.17.4",
-    "postmaster-general-core": "^0.0.6",
+    "postmaster-general-core": "^0.0.7",
     "request": "^2.83.0",
     "request-promise": "^4.2.2"
   },
