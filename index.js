@@ -209,6 +209,7 @@ class HTTPTransport extends Transport {
 									case 'delete':
 										this.router.delete(layer.path, layer.handle);
 										break;
+									/* istanbul ignore next */
 									default:
 										newRouter.all(layer.path, layer.handle);
 										break;
@@ -245,8 +246,6 @@ class HTTPTransport extends Transport {
 	 * @param {object} [options.correlationId] - Optional marker used for tracing requests through the system.
 	 * @param {object} [options.initiator] - Optional marker used for identifying the user who generated the initial request.
 	 * @returns {Promise}
-	 * @throws {TypeError}
-	 * @throws {RequestError}
 	 */
 	publish(routingKey, message, options) {
 		return this.request(routingKey, message, options)
@@ -270,9 +269,6 @@ class HTTPTransport extends Transport {
 	 * @param {object} [options.httpProtocol] - Http protocol to use (HTTP/HTTPS). Defaults to HTTP.
 	 * @param {object} [options.httpMethod] - Http method to use. Defaults to GET.
 	 * @returns {Promise}
-	 * @throws {TypeError}
-	 * @throws {RequestError}
-	 * @throws {ResponseError}
 	 */
 	request(routingKey, message, options) {
 		return super.request(routingKey, message, options)
@@ -289,6 +285,7 @@ class HTTPTransport extends Transport {
 				if (options.host) {
 					uri = `${options.httpProtocol || 'http'}://${options.host}${options.port ? ':' + options.port : ''}/${topic}`;
 				} else {
+					/* istanbul ignore next */
 					uri = `${options.httpProtocol || 'http'}://${topic}`;
 				}
 
@@ -301,6 +298,7 @@ class HTTPTransport extends Transport {
 					gzip: this.sendGzip
 				};
 
+				/* istanbul ignore next */
 				if (reqSettings.method === 'GET') {
 					reqSettings.qs = message;
 				} else {
@@ -323,6 +321,7 @@ class HTTPTransport extends Transport {
 									throw new errors.ResponseProcessingError(err.error.message, err.response.body);
 							}
 						}
+						/* istanbul ignore next */
 						throw new errors.RequestError(err);
 					});
 			});

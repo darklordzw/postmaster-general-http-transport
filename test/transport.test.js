@@ -344,6 +344,15 @@ describe('http-transport:', () => {
 				}
 				return Promise.resolve({ message: `${msg.message}, steve!` });
 			}))
+			.then(() => listenerTransport.addListener('steveU', () => { // eslint-disable-line max-nested-callbacks
+				return Promise.reject(new errors.UnauthorizedError('User is unauthorized'));
+			}))
+			.then(() => listenerTransport.addListener('steveF', () => { // eslint-disable-line max-nested-callbacks
+				return Promise.reject(new errors.ForbiddenError('User is forbidden'));
+			}))
+			.then(() => listenerTransport.addListener('steveNotFound', () => { // eslint-disable-line max-nested-callbacks
+				return Promise.reject(new errors.NotFoundError('User is not found'));
+			}))
 			.then(() => listenerTransport.addListener('dale', () => { // eslint-disable-line max-nested-callbacks
 				return Promise.reject(new errors.ResponseProcessingError('Dale has an error!'));
 			}))
@@ -407,6 +416,38 @@ describe('http-transport:', () => {
 			return transport.request('steve', {}, { host: 'localhost', port: 3000 })
 				.catch((err) => {
 					if (!(err instanceof errors.InvalidMessageError)) {
+						throw err;
+					}
+				});
+		});
+		it('should resolve to an invalid message error if the user is unauthorized', () => {
+			return transport.request('steveU', {}, { host: 'localhost', port: 3000 })
+				.catch((err) => {
+					if (!(err instanceof errors.UnauthorizedError)) {
+						throw err;
+					}
+				});
+		});
+		it('should resolve to an invalid message error if the user is unauthorized', () => {
+			return transport.request('steveU', {}, { host: 'localhost', port: 3000 })
+				.catch((err) => {
+					if (!(err instanceof errors.UnauthorizedError)) {
+						throw err;
+					}
+				});
+		});
+		it('should resolve to a forbidden error if the user is forbidden', () => {
+			return transport.request('steveF', {}, { host: 'localhost', port: 3000 })
+				.catch((err) => {
+					if (!(err instanceof errors.ForbiddenError)) {
+						throw err;
+					}
+				});
+		});
+		it('should resolve to a not found error if need be', () => {
+			return transport.request('steveNotFound', {}, { host: 'localhost', port: 3000 })
+				.catch((err) => {
+					if (!(err instanceof errors.NotFoundError)) {
 						throw err;
 					}
 				});
