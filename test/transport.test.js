@@ -92,7 +92,7 @@ describe('http-transport:', () => {
 		});
 	});
 
-	describe('addListener:', () => {
+	describe('addMessageListener:', () => {
 		let transport;
 
 		beforeEach(() => {
@@ -106,12 +106,12 @@ describe('http-transport:', () => {
 		});
 
 		it('should return a promise that resolves', () => {
-			return transport.addListener('bob', (msg, correlationId, initiator) => {
+			return transport.addMessageListener('bob', (msg, correlationId, initiator) => {
 				return Promise.resolve({ result: `Received ${JSON.stringify(msg)}, ${correlationId}, ${initiator}` });
 			});
 		});
 		it('should catch invalid routingKey params', () => {
-			return transport.addListener(44444, (msg, correlationId, initiator) => {
+			return transport.addMessageListener(44444, (msg, correlationId, initiator) => {
 				return Promise.resolve({ result: `Received ${JSON.stringify(msg)}, ${correlationId}, ${initiator}` });
 			})
 				.then(() => {
@@ -124,7 +124,7 @@ describe('http-transport:', () => {
 				});
 		});
 		it('should catch invalid callback params', () => {
-			return transport.addListener('bob')
+			return transport.addMessageListener('bob')
 				.then(() => {
 					throw new Error('Failed to catch invalid input.');
 				})
@@ -135,7 +135,7 @@ describe('http-transport:', () => {
 				});
 		});
 		it('should register a working get callback', () => {
-			return transport.addListener('bob', (msg, correlationId, initiator) => {
+			return transport.addMessageListener('bob', (msg, correlationId, initiator) => {
 				return Promise.resolve({ result: `Received ${JSON.stringify(msg)}, ${correlationId}, ${initiator}` });
 			})
 				.then((handler) => {
@@ -153,7 +153,7 @@ describe('http-transport:', () => {
 					}));
 		});
 		it('should register a working post callback', () => {
-			return transport.addListener('bob', (msg, correlationId, initiator) => {
+			return transport.addMessageListener('bob', (msg, correlationId, initiator) => {
 				return Promise.resolve({ result: `Received ${JSON.stringify(msg)}, ${correlationId}, ${initiator}` });
 			}, { httpMethod: 'POST' })
 				.then((handler) => {
@@ -184,7 +184,7 @@ describe('http-transport:', () => {
 		});
 	});
 
-	describe('removeListener:', () => {
+	describe('removeMessageListener:', () => {
 		let transport;
 
 		beforeEach(() => {
@@ -198,10 +198,10 @@ describe('http-transport:', () => {
 		});
 
 		it('should return a promise that resolves', () => {
-			return transport.removeListener('bob');
+			return transport.removeMessageListener('bob');
 		});
 		it('should catch invalid routingKey params', () => {
-			return transport.removeListener(35353535)
+			return transport.removeMessageListener(35353535)
 				.then(() => {
 					throw new Error('Failed to catch invalid input.');
 				})
@@ -212,7 +212,7 @@ describe('http-transport:', () => {
 				});
 		});
 		it('should remove the listener', () => {
-			return transport.addListener('bob', () => {
+			return transport.addMessageListener('bob', () => {
 				return Promise.resolve();
 			})
 				.then((handler) => {
@@ -228,7 +228,7 @@ describe('http-transport:', () => {
 					.then((response) => { // eslint-disable-line max-nested-callbacks
 						expect(response.body).to.exist();
 					}))
-				.then(() => transport.removeListener('bob'))
+				.then(() => transport.removeMessageListener('bob'))
 				.then(() => supertest(transport.app)
 					.get('/bob?testParam=5')
 					.set('X-PMG-CorrelationId', 'testCorrelationId')
@@ -275,7 +275,7 @@ describe('http-transport:', () => {
 		beforeEach(() => {
 			transport = new HTTPTransport();
 			listenerTransport = new HTTPTransport();
-			listenerTransport.addListener('bob', (msg) => {
+			listenerTransport.addMessageListener('bob', (msg) => {
 				return Promise.resolve({ message: `${msg.message}, bob!` });
 			});
 			listenerTransport.listen();
@@ -335,25 +335,25 @@ describe('http-transport:', () => {
 		beforeEach(() => {
 			transport = new HTTPTransport();
 			listenerTransport = new HTTPTransport();
-			listenerTransport.addListener('bob', (msg) => {
+			listenerTransport.addMessageListener('bob', (msg) => {
 				return Promise.resolve({ message: `${msg.message}, bob!` });
 			})
-			.then(() => listenerTransport.addListener('steve', (msg) => { // eslint-disable-line max-nested-callbacks
+			.then(() => listenerTransport.addMessageListener('steve', (msg) => { // eslint-disable-line max-nested-callbacks
 				if (!msg.message) {
 					return Promise.reject(new errors.InvalidMessageError('Missing required parameter "message"'));
 				}
 				return Promise.resolve({ message: `${msg.message}, steve!` });
 			}))
-			.then(() => listenerTransport.addListener('steveU', () => { // eslint-disable-line max-nested-callbacks
+			.then(() => listenerTransport.addMessageListener('steveU', () => { // eslint-disable-line max-nested-callbacks
 				return Promise.reject(new errors.UnauthorizedError('User is unauthorized'));
 			}))
-			.then(() => listenerTransport.addListener('steveF', () => { // eslint-disable-line max-nested-callbacks
+			.then(() => listenerTransport.addMessageListener('steveF', () => { // eslint-disable-line max-nested-callbacks
 				return Promise.reject(new errors.ForbiddenError('User is forbidden'));
 			}))
-			.then(() => listenerTransport.addListener('steveNotFound', () => { // eslint-disable-line max-nested-callbacks
+			.then(() => listenerTransport.addMessageListener('steveNotFound', () => { // eslint-disable-line max-nested-callbacks
 				return Promise.reject(new errors.NotFoundError('User is not found'));
 			}))
-			.then(() => listenerTransport.addListener('dale', () => { // eslint-disable-line max-nested-callbacks
+			.then(() => listenerTransport.addMessageListener('dale', () => { // eslint-disable-line max-nested-callbacks
 				return Promise.reject(new errors.ResponseProcessingError('Dale has an error!'));
 			}))
 			.then(() => listenerTransport.listen());

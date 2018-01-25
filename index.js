@@ -136,8 +136,8 @@ class HTTPTransport extends Transport {
 	 * @param {number} [options.httpMethod] - The HTTP method to listen for. Defaults to "GET".
 	 * @returns {Promise}
 	 */
-	addListener(routingKey, callback, options) {
-		return super.addListener(routingKey, callback, options)
+	addMessageListener(routingKey, callback, options) {
+		return super.addMessageListener(routingKey, callback, options)
 			.then((callbackWrapper) => {
 				options = options || {};
 				options.httpMethod = (options.httpMethod || 'get').toLowerCase();
@@ -185,8 +185,8 @@ class HTTPTransport extends Transport {
 	 * @param {string} routingKey - The routing key of the handler to remove.
 	 * @returns {Promise}
 	 */
-	removeListener(routingKey) {
-		return super.removeListener(routingKey)
+	removeMessageListener(routingKey) {
+		return super.removeMessageListener(routingKey)
 			.then(() => {
 				const topic = this.resolveTopic(routingKey);
 				const newRouter = express.Router(); // eslint-disable-line new-cap

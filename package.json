@@ -32,7 +32,7 @@
     "compression": "^1.7.1",
     "express": "^4.16.2",
     "lodash": "^4.17.4",
-    "postmaster-general-core": "^0.0.8",
+    "postmaster-general-core": "^0.0.9",
     "request": "^2.83.0",
     "request-promise": "^4.2.2"
   },
