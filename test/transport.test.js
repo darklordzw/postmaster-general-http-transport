@@ -155,7 +155,7 @@ describe('http-transport:', () => {
 		it('should register a working post callback', () => {
 			return transport.addMessageListener('bob', (msg, correlationId, initiator) => {
 				return Promise.resolve({ result: `Received ${JSON.stringify(msg)}, ${correlationId}, ${initiator}` });
-			}, { httpMethod: 'POST' })
+			}, { method: 'POST' })
 				.then((handler) => {
 					expect(handler).to.exist();
 				})

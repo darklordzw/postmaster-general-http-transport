@@ -133,20 +133,20 @@ class HTTPTransport extends Transport {
 	 * @param {string} routingKey - The routing key of the message to handle.
 	 * @param {function} callback - The function to call when a new message is received.
 	 * @param {object} [options] - Optional params for configuring the handler.
-	 * @param {number} [options.httpMethod] - The HTTP method to listen for. Defaults to "GET".
+	 * @param {number} [options.method] - The HTTP method to listen for. Defaults to "GET".
 	 * @returns {Promise}
 	 */
 	addMessageListener(routingKey, callback, options) {
 		return super.addMessageListener(routingKey, callback, options)
 			.then((callbackWrapper) => {
 				options = options || {};
-				options.httpMethod = (options.httpMethod || 'get').toLowerCase();
+				options.method = (options.method || 'get').toLowerCase();
 
 				const topic = this.resolveTopic(routingKey);
 
 				// Generate the Express.js handler that wraps the callback function.
 				const handler = (req, res, next) => {
-					const msg = options.httpMethod === 'get' || options.httpMethod === 'delete' ? req.query : req.body;
+					const msg = options.method === 'get' || options.method === 'delete' ? req.query : req.body;
 					callbackWrapper(msg, req.headers['x-pmg-correlationid'], req.headers['x-pmg-initiator'])
 						.then((response) => {
 							res.status(200).json(response || {});
@@ -156,7 +156,7 @@ class HTTPTransport extends Transport {
 						});
 				};
 
-				switch (options.httpMethod) {
+				switch (options.method) {
 					case 'get':
 						this.router.get(`/${topic}`, handler);
 						break;
@@ -173,7 +173,7 @@ class HTTPTransport extends Transport {
 						this.router.all(`/${topic}`, handler);
 						break;
 					default:
-						throw new TypeError(`${options.httpMethod} is an unsupported method.`);
+						throw new TypeError(`${options.method} is an unsupported method.`);
 				}
 
 				return handler;
@@ -266,8 +266,8 @@ class HTTPTransport extends Transport {
 	 * @param {object} [options.headers] - Optional http headers to send as part of the request.
 	 * @param {object} [options.host] - Optional http hostname to send to. If not specified, the routing key is assumed to include the hostname.
 	 * @param {object} [options.port] - Optional port to send. Requires the options.host parameter to be set.
-	 * @param {object} [options.httpProtocol] - Http protocol to use (HTTP/HTTPS). Defaults to HTTP.
-	 * @param {object} [options.httpMethod] - Http method to use. Defaults to GET.
+	 * @param {object} [options.protocol] - Http protocol to use (HTTP/HTTPS). Defaults to HTTP.
+	 * @param {object} [options.method] - Http method to use. Defaults to GET.
 	 * @returns {Promise}
 	 */
 	request(routingKey, message, options) {
@@ -283,16 +283,16 @@ class HTTPTransport extends Transport {
 				// Build the uri.
 				let uri;
 				if (options.host) {
-					uri = `${options.httpProtocol || 'http'}://${options.host}${options.port ? ':' + options.port : ''}/${topic}`;
+					uri = `${options.protocol || 'http'}://${options.host}${options.port ? ':' + options.port : ''}/${topic}`;
 				} else {
 					/* istanbul ignore next */
-					uri = `${options.httpProtocol || 'http'}://${topic}`;
+					uri = `${options.protocol || 'http'}://${topic}`;
 				}
 
 				// Configure the request.
 				const reqSettings = {
 					uri,
-					method: options.httpMethod || 'GET',
+					method: options.method || 'GET',
 					headers: options.headers,
 					json: true,
 					gzip: this.sendGzip
