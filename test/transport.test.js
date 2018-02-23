@@ -6,7 +6,7 @@ const dirtyChai = require('dirty-chai');
 const errors = require('postmaster-general-core').errors;
 const sinon = require('sinon');
 const supertest = require('supertest');
-const HTTPTransport = require('../index');
+const HTTPTransport = require('..');
 const defaults = require('../defaults.json');
 
 /* This sets up the Chai assertion library. "should" and "expect"
@@ -338,25 +338,25 @@ describe('http-transport:', () => {
 			listenerTransport.addMessageListener('bob', (msg) => {
 				return Promise.resolve({ message: `${msg.message}, bob!` });
 			})
-			.then(() => listenerTransport.addMessageListener('steve', (msg) => { // eslint-disable-line max-nested-callbacks
-				if (!msg.message) {
-					return Promise.reject(new errors.InvalidMessageError('Missing required parameter "message"'));
-				}
-				return Promise.resolve({ message: `${msg.message}, steve!` });
-			}))
-			.then(() => listenerTransport.addMessageListener('steveU', () => { // eslint-disable-line max-nested-callbacks
-				return Promise.reject(new errors.UnauthorizedError('User is unauthorized'));
-			}))
-			.then(() => listenerTransport.addMessageListener('steveF', () => { // eslint-disable-line max-nested-callbacks
-				return Promise.reject(new errors.ForbiddenError('User is forbidden'));
-			}))
-			.then(() => listenerTransport.addMessageListener('steveNotFound', () => { // eslint-disable-line max-nested-callbacks
-				return Promise.reject(new errors.NotFoundError('User is not found'));
-			}))
-			.then(() => listenerTransport.addMessageListener('dale', () => { // eslint-disable-line max-nested-callbacks
-				return Promise.reject(new errors.ResponseProcessingError('Dale has an error!'));
-			}))
-			.then(() => listenerTransport.listen());
+				.then(() => listenerTransport.addMessageListener('steve', (msg) => { // eslint-disable-line max-nested-callbacks
+					if (!msg.message) {
+						return Promise.reject(new errors.InvalidMessageError('Missing required parameter "message"'));
+					}
+					return Promise.resolve({ message: `${msg.message}, steve!` });
+				}))
+				.then(() => listenerTransport.addMessageListener('steveU', () => { // eslint-disable-line max-nested-callbacks
+					return Promise.reject(new errors.UnauthorizedError('User is unauthorized'));
+				}))
+				.then(() => listenerTransport.addMessageListener('steveF', () => { // eslint-disable-line max-nested-callbacks
+					return Promise.reject(new errors.ForbiddenError('User is forbidden'));
+				}))
+				.then(() => listenerTransport.addMessageListener('steveNotFound', () => { // eslint-disable-line max-nested-callbacks
+					return Promise.reject(new errors.NotFoundError('User is not found'));
+				}))
+				.then(() => listenerTransport.addMessageListener('dale', () => { // eslint-disable-line max-nested-callbacks
+					return Promise.reject(new errors.ResponseProcessingError('Dale has an error!'));
+				}))
+				.then(() => listenerTransport.listen());
 		});
 
 		afterEach(() => {
