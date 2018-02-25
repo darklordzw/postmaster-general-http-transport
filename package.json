@@ -1,6 +1,6 @@
 {
   "name": "postmaster-general-http-transport",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "HTTP transport module for the postmaster-general microservice library.",
   "author": "Ben Whatley",
   "repository": {
