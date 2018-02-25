@@ -28,6 +28,7 @@
     "doc": "./node_modules/.bin/jsdoc -c ./jsdoc-conf.json -t ./node_modules/ink-docstrap/template -R README.md -d ./docs -r ."
   },
   "dependencies": {
+    "bluebird": "^3.5.1",
     "body-parser": "^1.18.2",
     "compression": "^1.7.2",
     "express": "^4.16.2",
@@ -37,7 +38,7 @@
   },
   "peerDependencies": {
     "postmaster-general": "5.x",
-    "postmaster-general-core": "^0.0.11"
+    "postmaster-general-core": "^0.0.12"
   },
   "devDependencies": {
     "chai": "^4.1.2",
@@ -47,8 +48,8 @@
     "jsdoc": "^3.5.5",
     "mocha": "^4.1.0",
     "nyc": "^11.5.0",
-    "postmaster-general-core": "^0.0.11",
-    "sinon": "^4.4.0",
+    "postmaster-general-core": "0.0.12",
+    "sinon": "^4.4.2",
     "supertest": "^3.0.0",
     "xo": "^0.20.3"
   },

@@ -8,6 +8,7 @@
 const bodyParser = require('body-parser');
 const compression = require('compression');
 const express = require('express');
+const Promise = require('bluebird');
 const _ = require('lodash');
 const rp = require('request-promise');
 const rpErrors = require('request-promise/errors');
