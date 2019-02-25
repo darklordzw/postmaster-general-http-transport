@@ -3,7 +3,7 @@
 
 const chai = require('chai');
 const dirtyChai = require('dirty-chai');
-const errors = require('postmaster-general-core').errors;
+const { errors } = require('postmaster-general-core');
 const Promise = require('bluebird');
 const sinon = require('sinon');
 const supertest = require('supertest');
@@ -15,7 +15,7 @@ initialize their respective assertion properties. The "use()" functions
 load plugins into Chai. "dirtyChai" just allows assertion properties to
 use function call syntax ("calledOnce()" vs "calledOnce"). It makes them more
 acceptable to the linter. */
-const expect = chai.expect;
+const { expect } = chai;
 chai.should();
 chai.use(dirtyChai);
 

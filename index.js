@@ -12,8 +12,8 @@ const Promise = require('bluebird');
 const _ = require('lodash');
 const rp = require('request-promise');
 const rpErrors = require('request-promise/errors');
-const Transport = require('postmaster-general-core').Transport;
-const errors = require('postmaster-general-core').errors;
+const { Transport } = require('postmaster-general-core');
+const { errors } = require('postmaster-general-core');
 const defaults = require('./defaults');
 
 /**
